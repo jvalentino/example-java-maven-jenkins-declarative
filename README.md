@@ -1,4 +1,4 @@
-# Using a Scripted Pipeline to deliver Java Libraries with Maven
+# Using a Declarative Pipeline to deliver Java Libraries with Maven
 
 Prerequisites
 
@@ -11,66 +11,61 @@ Prerequisites
 - Maven-Java Part 3: https://github.com/jvalentino/example-java-maven-lib-3
 - Maven-Java Part 4: https://github.com/jvalentino/example-java-maven-lib-4
 - Jenkins Freestyle: https://github.com/jvalentino/example-java-maven-jenkins-freestyle
+- Jenkins Scripted: https://github.com/jvalentino/example-java-maven-jenkins-scripted
 
-# (1) Plugins
-
-## Pipeline Maven
-
-![04](wiki/04.png)
-
-## Blue Ocean
-
-![04](wiki/05.png)
-
-# (2) The Pipeline as Code
+# (1) Pipeline as Code
 
 ```groovy
-node {
-  
-  stage('Clone') {
-      dir('.') {
-          git branch: 'main', credentialsId: 'github_com', url: 'git@github.com:jvalentino/example-java-maven-jenkins-scripted.git'
-      }    
-  }       
+pipeline {
+  agent any
 
-  stage('Deploy') {
-     withCredentials([usernamePassword(
+  stages {
+    
+    stage('Publish') {
+      steps {
+        withCredentials([usernamePassword(
         credentialsId: 'github-publish-maven', 
         passwordVariable: 'MVN_PASSWORD', 
         usernameVariable: 'MVN_USERNAME')]) {
 
-        withMaven(mavenSettingsFilePath: 'settings.xml') {
-          sh """
-            ./mvnw deploy \
-                -Drepo.id=github \
-                -Drepo.login=${MVN_USERNAME} \
-                -Drepo.pwd=${MVN_PASSWORD} \
-                -Drevision=1.${BUILD_NUMBER}
-          """
-        }  
-     }
-  }  
+          withMaven(mavenSettingsFilePath: 'settings.xml') {
+            sh """
+              ./mvnw deploy \
+                  -Drepo.id=github \
+                  -Drepo.login=${MVN_USERNAME} \
+                  -Drepo.pwd=${MVN_PASSWORD} \
+                  -Drevision=1.${BUILD_NUMBER}
+            """
+          }  
+        }
+      }
+    } // Publish
 
-  stage('Post') {
-    jacoco()
-    junit 'target/surefire-reports/*.xml'
-    def pmd = scanForIssues tool: [$class: 'Pmd'], pattern: 'target/pmd.xml'
-    publishIssues issues: [pmd]
+    stage('Post') {
+      steps {
+        script {
+          jacoco()
+          junit 'target/surefire-reports/*.xml'
+          def pmd = scanForIssues tool: [$class: 'Pmd'], pattern: 'target/pmd.xml'
+          publishIssues issues: [pmd]
+        }
+      }
+    } // Post
+
   }
-  
 }
 ```
 
-# (3) Setup
+# (2) Setup
 
-![04](wiki/01.png)
+![01](wiki/01.png)
 
-![04](wiki/02.png)
+![01](wiki/02.png)
 
-![04](wiki/03.png)
+![01](wiki/03.png)
 
-# (4) Runtime
+# (3) Runtime
 
-![04](wiki/06.png)
+![01](wiki/04.png)
 
-![04](wiki/07.png)
+![01](wiki/05.png)
